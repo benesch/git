@@ -7,6 +7,7 @@
 #include "parse-options.h"
 #include "unpack-trees.h"
 #include "dir.h"
+#include "submodule.h"
 
 static char const * const archive_usage[] = {
 	N_("git archive [<options>] <tree-ish> [<path>...]"),
@@ -132,18 +133,15 @@ static int write_archive_entry(const unsigned char *sha1, const char *base,
 		args->convert = ATTR_TRUE(check->items[1].value);
 	}
 
-	if (S_ISDIR(mode) || S_ISGITLINK(mode)) {
-		if (args->verbose)
-			fprintf(stderr, "%.*s\n", (int)path.len, path.buf);
-		err = write_entry(args, sha1, path.buf, path.len, mode);
-		if (err)
-			return err;
-		return (S_ISDIR(mode) ? READ_TREE_RECURSIVE : 0);
-	}
-
 	if (args->verbose)
 		fprintf(stderr, "%.*s\n", (int)path.len, path.buf);
-	return write_entry(args, sha1, path.buf, path.len, mode);
+	err = write_entry(args, sha1, path.buf, path.len, mode);
+	if (err)
+		return err;
+	if (S_ISDIR(mode) || (S_ISGITLINK(mode) && args->recurse_submodules &&
+			      !add_submodule_odb(path_without_prefix)))
+		return READ_TREE_RECURSIVE;
+	return 0;
 }
 
 static int write_archive_entry_buf(const unsigned char *sha1, struct strbuf *base,
@@ -411,6 +409,7 @@ static int parse_archive_args(int argc, const char **argv,
 	int verbose = 0;
 	int i;
 	int list = 0;
+	int recurse_submodules = 0;
 	int worktree_attributes = 0;
 	struct option opts[] = {
 		OPT_GROUP(""),
@@ -419,6 +418,8 @@ static int parse_archive_args(int argc, const char **argv,
 			N_("prepend prefix to each pathname in the archive")),
 		OPT_STRING('o', "output", &output, N_("file"),
 			N_("write the archive to this file")),
+		OPT_BOOL(0, "recurse-submodules", &recurse_submodules,
+			N_("recurse through submodules")),
 		OPT_BOOL(0, "worktree-attributes", &worktree_attributes,
 			N_("read .gitattributes in working directory")),
 		OPT__VERBOSE(&verbose, N_("report archived files on stderr")),
@@ -484,6 +485,7 @@ static int parse_archive_args(int argc, const char **argv,
 		}
 	}
 	args->verbose = verbose;
+	args->recurse_submodules = recurse_submodules;
 	args->base = base;
 	args->baselen = strlen(base);
 	args->worktree_attributes = worktree_attributes;

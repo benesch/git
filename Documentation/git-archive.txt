@@ -11,8 +11,8 @@ SYNOPSIS
 [verse]
 'git archive' [--format=<fmt>] [--list] [--prefix=<prefix>/] [<extra>]
 	      [-o <file> | --output=<file>] [--worktree-attributes]
-	      [--remote=<repo> [--exec=<git-upload-archive>]] <tree-ish>
-	      [<path>...]
+	      [--recurse-submodules] [--remote=<repo> [--exec=<git-upload-archive>]]
+	      <tree-ish> [<path>...]
 
 DESCRIPTION
 -----------
@@ -58,6 +58,10 @@ OPTIONS
 --worktree-attributes::
 	Look for attributes in .gitattributes files in the working tree
 	as well (see <<ATTRIBUTES>>).
+
+--recurse-submodules::
+	Recursively include the contents of any checked-out submodules in
+	the archive.
 
 <extra>::
 	This can be any options that the archiver backend understands.
